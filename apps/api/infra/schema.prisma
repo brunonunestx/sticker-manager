@@ -15,4 +15,63 @@ model User {
   refreshToken String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  userAlbums UserAlbum[]
+}
+
+model Album {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stickers   Sticker[]
+  userAlbums UserAlbum[]
+}
+
+model Sticker {
+  id        String   @id @default(cuid())
+  albumId   String
+  code      String
+  section   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  album        Album         @relation(fields: [albumId], references: [id])
+  userStickers UserSticker[]
+
+  @@unique([albumId, code])
+  @@index([albumId])
+  @@index([albumId, section])
+}
+
+model UserAlbum {
+  id        String   @id @default(cuid())
+  userId    String
+  albumId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id])
+  album        Album         @relation(fields: [albumId], references: [id])
+  userStickers UserSticker[]
+
+  @@unique([userId])
+  @@index([userId, albumId])
+}
+
+model UserSticker {
+  id          String   @id @default(cuid())
+  userAlbumId String
+  stickerId   String
+  quantity    Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userAlbum UserAlbum @relation(fields: [userAlbumId], references: [id])
+  sticker   Sticker   @relation(fields: [stickerId], references: [id])
+
+  @@unique([userAlbumId])
+  @@index([userAlbumId, stickerId])
+  @@index([stickerId])
 }
