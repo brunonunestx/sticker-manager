@@ -1,9 +1,21 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { memoryStorage } from 'multer';
 import { Auth } from '../../common/decorators/auth.decorator';
 import { Role } from '../../generated/prisma/client';
 import { AlbumsService } from './albums.service';
-import { CreateAlbumDto } from './dto/create-album.dto';
+import { CreateAlbumDto, CreateAlbumWithStickersBody } from './dto/create-album.dto';
 import { CreateStickerDto } from './dto/create-sticker.dto';
 
 @ApiTags('albums')
@@ -14,8 +26,21 @@ export class AlbumsController {
 
   @Post()
   @Auth(Role.ADMIN)
-  create(@Body() dto: CreateAlbumDto) {
-    return this.albumsService.create(dto);
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: CreateAlbumWithStickersBody })
+  @UseInterceptors(
+    FileInterceptor('stickers', {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (_, file, cb) => {
+        const isJson = file.mimetype === 'application/json' || file.originalname.endsWith('.json');
+        cb(isJson ? null : new BadRequestException('Only JSON files are allowed'), isJson);
+      },
+    }),
+  )
+  create(@Body() dto: CreateAlbumDto, @UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Stickers JSON file is required');
+    return this.albumsService.create(dto, file);
   }
 
   @Get()

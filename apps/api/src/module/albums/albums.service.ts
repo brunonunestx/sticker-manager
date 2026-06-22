@@ -1,15 +1,31 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { Prisma } from '../../generated/prisma/client';
 import { DatabaseProvider } from '../../providers/database.provider';
 import { CreateAlbumDto } from './dto/create-album.dto';
 import { CreateStickerDto } from './dto/create-sticker.dto';
+import { StickerFileItemDto } from './dto/sticker-file-item.dto';
 
 @Injectable()
 export class AlbumsService {
   constructor(private readonly db: DatabaseProvider) {}
 
-  async create(dto: CreateAlbumDto) {
-    return this.db.album.create({ data: { name: dto.name } });
+  async create(dto: CreateAlbumDto, file: Express.Multer.File) {
+    const stickers = await this.parseStickersFile(file);
+
+    return this.db.$transaction(async (tx) => {
+      const album = await tx.album.create({ data: { name: dto.name } });
+
+      await tx.sticker.createMany({
+        data: stickers.map((s) => ({ albumId: album.id, code: s.code, section: s.section })),
+      });
+
+      return tx.album.findUnique({
+        where: { id: album.id },
+        include: { _count: { select: { stickers: true } } },
+      });
+    });
   }
 
   async findAll() {
@@ -44,5 +60,30 @@ export class AlbumsService {
       where: { albumId, ...(section ? { section } : {}) },
       orderBy: [{ section: 'asc' }, { code: 'asc' }],
     });
+  }
+
+  private async parseStickersFile(file: Express.Multer.File): Promise<StickerFileItemDto[]> {
+    let raw: unknown;
+
+    try {
+      raw = JSON.parse(file.buffer.toString('utf-8'));
+    } catch {
+      throw new BadRequestException('Invalid JSON file');
+    }
+
+    if (!Array.isArray(raw) || raw.length === 0) {
+      throw new BadRequestException('File must be a non-empty JSON array');
+    }
+
+    const items = plainToInstance(StickerFileItemDto, raw);
+    const errors = (await Promise.all(items.map((item) => validate(item)))).flat();
+
+    if (errors.length > 0) {
+      throw new BadRequestException(
+        `Invalid sticker data: ${errors.map((e) => Object.values(e.constraints ?? {}).join(', ')).join('; ')}`,
+      );
+    }
+
+    return items;
   }
 }

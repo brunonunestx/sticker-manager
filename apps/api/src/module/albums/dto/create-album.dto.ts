@@ -6,3 +6,11 @@ export class CreateAlbumDto {
   @IsString()
   declare name: string;
 }
+
+export class CreateAlbumWithStickersBody {
+  @ApiProperty({ example: 'Copa do Mundo 2026' })
+  declare name: string;
+
+  @ApiProperty({ type: 'string', format: 'binary', description: 'JSON file with stickers array: [{ "code": "BRA12", "section": "BRA" }]' })
+  declare stickers: Express.Multer.File;
+}
