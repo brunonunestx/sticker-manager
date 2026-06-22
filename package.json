@@ -1,0 +1,9 @@
+{
+  "name": "sticker-manager",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "dev:api": "pnpm --filter api dev"
+  }
+}
