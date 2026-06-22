@@ -1,12 +1,14 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { UsersService } from '../users/users.service';
+import { Role } from '../../generated/prisma/client';
 import { CreateUserDto } from '../users/dto/create-user.dto';
+import { UsersService } from '../users/users.service';
 
 export type JwtPayload = {
   sub: string;
   email: string;
+  role: Role;
 };
 
 @Injectable()
@@ -18,7 +20,7 @@ export class AuthService {
 
   async register(dto: CreateUserDto) {
     const user = await this.usersService.create(dto);
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
     await this.usersService.updateRefreshToken(user.id, tokens.refreshToken);
     return tokens;
   }
@@ -30,7 +32,7 @@ export class AuthService {
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
     await this.usersService.updateRefreshToken(user.id, tokens.refreshToken);
     return tokens;
   }
@@ -42,7 +44,7 @@ export class AuthService {
     const valid = await bcrypt.compare(refreshToken, user.refreshToken);
     if (!valid) throw new UnauthorizedException();
 
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
     await this.usersService.updateRefreshToken(user.id, tokens.refreshToken);
     return tokens;
   }
@@ -51,8 +53,8 @@ export class AuthService {
     await this.usersService.updateRefreshToken(userId, null);
   }
 
-  private async generateTokens(userId: string, email: string) {
-    const payload: JwtPayload = { sub: userId, email };
+  private async generateTokens(userId: string, email: string, role: Role) {
+    const payload: JwtPayload = { sub: userId, email, role };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {

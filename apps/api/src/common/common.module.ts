@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtAuthGuard } from '../module/auth/guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [JwtModule.register({})],
-  providers: [JwtAuthGuard],
-  exports: [JwtAuthGuard, JwtModule],
+  providers: [JwtAuthGuard, RolesGuard],
+  exports: [JwtAuthGuard, RolesGuard, JwtModule],
 })
 export class CommonModule {}
