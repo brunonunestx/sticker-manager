@@ -1,10 +1,10 @@
 import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
+import { Auth } from '../../common/decorators/auth.decorator';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { AuthService, JwtPayload } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshGuard, RefreshRequest } from './guards/refresh.guard';
 
 @Controller('auth')
@@ -31,7 +31,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(200)
-  @UseGuards(JwtAuthGuard)
+  @Auth()
   logout(@Req() req: Request & { user: JwtPayload }) {
     return this.authService.logout(req.user.sub);
   }

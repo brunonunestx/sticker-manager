@@ -4,6 +4,8 @@
   "scripts": {
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
-    "dev:api": "pnpm --filter api dev"
+    "dev:api": "pnpm --filter api dev",
+    "db:up": "docker compose up db -d",
+    "db:down": "docker compose down --remove-orphans"
   }
 }
